@@ -1,0 +1,6 @@
+*.pyc
+django_ae-people.datastore
+.google_appengine
+.project
+.pydevproject
+prod_settings.py

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block head_title %}Developers from {{ country.name }}{% endblock %}
+{% block head_description %}App Engine Developers from {{ country.name }}{% endblock %}
+
+{% block main_content %}
+
+<div>		
+    <div class="mapContainer">
+        <div id="gmap">&nbsp;</div>
+    </div>
+	<script type="text/javascript">
+		google.load('maps', '2');
+
+		var map = null;
+		var geocoder = null;
+		
+		$(document).ready(function () {
+	      if (GBrowserIsCompatible()) {
+	        var map = new GMap2(document.getElementById("gmap"));
+            geocoder = new GClientGeocoder();
+            if (geocoder) {
+                geocoder.getLatLng(
+                  '{{ country.name }}',
+                  function(point) {
+                    if (point) {
+                        map.setCenter(point, 4);
+                    } else {
+                        map.setCenter(new GLatLng(19.97, -15.82), 2);
+                    }
+                  }
+                );
+            } else {
+            	map.setCenter(new GLatLng(19.97, -15.82), 2);
+            }
+	        
+	        //map.setMapType(G_HYBRID_MAP);
+	        {% for developer in developers %}
+		    {% if developer.location %}
+		    var point = new GLatLng({{ developer.location.lat }}, {{ developer.location.lon }});
+			    var marker = new GMarker(point);
+		    
+		    map.addOverlay(marker);
+		    GEvent.addListener(marker, 'click', function(point) {
+		    	var info = "<span style='font-size: 22px; font-weight: bold'><img src='/static/images/flags/{{ developer.country|lower }}.png'> &nbsp; {{ developer.getname }}</span>"
+		    	info += "<div>Location: " + "{{ developer.location_description }}" + "</div>";
+		    	info += "<div>Country: " + "{{ developer.get_country }}" + "</div>";
+		    	info += "<div>Member since: " + "{{ developer.sign_up_date|date:"F j, Y" }}" + "</div>";
+		    	info += "<a href='{% url users_profile developer.alias %}'>view profile</a>";
+		    	map.openInfoWindowHtml(point, info);
+      			});
+		    
+	        {% endif %}
+	        {% endfor %}
+	        
+	        {% comment %}
+	        $.getJSON("/users/developers_json/",
+        		function(developers){
+          			$.each(developers, function(i,developer){
+          				map.addOverlay(new GMarker(new GLatLng(developer.lat,  developer.lon )));
+          			});
+        	});        	
+        	map.setUIToDefault();
+			{% endcomment %}
+	        
+	      }
+	    });
+	</script>
+</div>
+
+<div class="container_12">	
+	<div class="grid_12">
+		<div class="title1">{{ developers|length }} developers from <strong><em>{{ country.name }}</em></strong></div>
+	
+    <div id="dev-results">
+	{% for developer in developers %}
+	
+		<div class="dev-result">
+		<img src="/static/images/flags/{{ developer.country|lower }}.png"> &nbsp; <a href="{% url users_profile developer.alias %}">{{ developer.getname }} </a>
+		</div>	
+	{% endfor %}
+    </div>
+	</div>
+    <div class="clear" style="margin-bottom: 20px;"></div>
+</div>
+{% endblock %}

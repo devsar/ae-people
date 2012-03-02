@@ -1,0 +1,68 @@
+{% extends "site_base.html" %}
+
+{% load users %}
+
+{% block header %}
+<div class="container_12">
+	<div id="mainCol" class="grid_12">
+		<div id="header">
+			<div id="navbar">
+				<ul>
+					<li><a href="/">Home</a></li>
+					<li><a href="/about">About</a></li>
+                    <li><a href="http://www.google.com/moderator/#16/e=2d4e2">Feedback</a></li>
+					<li><a href="/stats/">Stats</a></li>
+					<li><a href="/search">Search</a></li>
+					{% if user.is_authenticated %}
+					{% if user.developer %}
+					<li><a href="{% url users_profile user.developer.alias %}">Profile</a></li>
+					<li><a href="{% url users_edit user.developer.alias %}">Account</a></li>
+					{% endif %}
+					<li><a href="{% auth_logout_url / %}">Logout</a></li>
+					{% else %}
+					<li><a href="{% auth_login_url /users/check_profile/ %}">Login</a></li>
+					{% endif %}
+				</ul>
+			</div>
+			{% if user.is_authenticated %}
+			<div id="user-ident">
+				<span>Logged in as <b>{{ user.developer.getname }}</b></span>
+			</div>
+			{% else %}
+			<div id="user-ident">
+				<span>To sign up, log in with your google account.</span>
+			</div>
+			{% endif %}
+			<div id="logo-wrap">
+				<div id="logo-img"><a class="nobk" href="/"><img src="/static/images/layout/logo-text.png" alt="AppEngine People Logo"></a></div>
+				<div id="logo-text"><h1 style="display:none">AppEngine People</h1></div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+
+{% if flash.message %}
+<div id="flash_message" class="container_12">
+	<div class="{{ flash.severity|default:"notice" }}">
+		<p>{{ flash.message }}</p>
+	</div>
+</div>
+{% endif %}
+
+{% block main_content %}
+<div id="main_content">
+	<div>This is the MAIN_BLOCK 1</div>
+</div>
+{% endblock %}
+
+{% block footer %}
+<div class="container_12">
+	<div class="grid_12">
+		<div id="footer">
+		&copy;2010-2012 develop by <a href="http://www.devsar.com" title="app engine developers">www.devsar.com</a> & <a href="http://www.livemade.com">www.livemade.com</a> | <span style="font-size:9px">*AppEngine is a trademark of Google Inc.</span>
+		</div>
+	</div>
+</div>
+{% endblock %}

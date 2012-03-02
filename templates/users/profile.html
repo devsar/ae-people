@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% load uni_form_tags i18n markup %}
+
+{% block head_title %}{{ developer.getname }} ({{ developer.alias }}){% endblock %}
+{% block head_description %}App Engine Developer {{ developer.getname }} [{{ developer.alias }}] - {% if developer.location_description %}{{ developer.location_description }}, {% endif %}({{ developer.country }}){% if developer.about_me %} - {{ developer.about_me }}{% endif %}{% endblock %}
+
+{% block main_content %}
+<div class="container_12" itemscope itemtype="http://data-vocabulary.org/Person">
+	<div class="grid_6">
+		<div class="ybox" style="margin-bottom:20px;">
+			<div class="dev_avatar">
+			{% if developer.photo %}
+			<img width="200" height="200" src="{% url users_avatar developer.key.id %}"/>
+			{% else %}
+			<img width="200" height="200" src="/static/images/no_avatar.png"/>
+			{% endif %}
+			{% ifequal developer.user.key user.key %}
+			<br/><a href="{% url users_avatar_change %}">{% trans "change avatar" %}</a>
+			{% endifequal %}
+			</div>
+			<div id="dev-info">
+				<div class="dev_name" itemprop="name">{{ developer.getname }} </div>
+				<div class="alias"><h3 itemprop="nickname">[{{ developer.alias }}]</h3></div>
+                <span itemprop="address" itemscope itemtype="http://data-vocabulary.org/Address">
+				<div class="dev_location" itemprop="locality"><img alt="{{ developer.country|lower }}" src="/static/images/flags/{{ developer.country|lower }}.png"> &nbsp; {{ developer.location_description }}
+                </div>
+                </span> 
+			</div>
+			<div style="clear:both;height:10px"></div>
+			<div id="tags">
+			{% for tag in developer.tags %}
+				<a href="{% url users_by_tag tag %}"> <span class="tag">{{ tag }}</span></a>
+			{% endfor %}
+			</div>
+		</div>
+		{% if developer.about_me %}
+		<div class="ybox" style="margin-bottom:20px;">
+			<div id="dev_bio">
+				<h3>About Me</h3>
+				{{ developer.about_me|textile  }}
+			</div>
+		</div>
+		{% endif %}
+	</div>
+	<div class="grid_6">
+		{% if developer.public_contact_information %}
+			{% include "users/contact_block.html" %}
+		{% else %}
+			{% if user.is_authenticated %}
+				{% include "users/contact_block.html" %}
+			{% endif %}
+		{% endif %}
+		<div class="mapContainer2">
+			<div id="gmap">&nbsp;</div>
+		</div>
+		{% if near_me %}	
+		<div class="title1">People near {{ developer.getname }}</div>
+		<ul>
+		{% for developer in near_me %}
+  			<li><h6><img src="/static/images/flags/{{ developer.country|lower }}.png"> &nbsp; <a href="{% url users_profile developer.alias %}">{{ developer.getname }} </a></h6></li>
+  		{% endfor %}
+		</ul>
+		{% else %}
+		<div class="title1">There are no people near {{ developer.getname }}!</div>
+	{% endif %}
+	</div>
+</div>
+<script type="text/javascript">
+	google.load('maps', '2');
+	$(document).ready(function () {
+      if (GBrowserIsCompatible()) {
+        var map = new GMap2(document.getElementById("gmap"));
+        var point = new GLatLng({{ developer.location.lat }}, {{ developer.location.lon }});
+    	var marker = new GMarker(point);
+        map.setCenter(point, 12);
+		map.addControl(new GSmallMapControl());
+	    map.addOverlay(marker);
+		GEvent.addListener(marker, 'click', function(point) {
+		    	var info = "<span style='font-size: 22px; font-weight: bold'><img src='/static/images/flags/{{ developer.country|lower }}.png'> &nbsp; {{ developer.getname }}</span>"
+		    	info += "<div>Location: " + "{{ developer.location_description }}" + "</div>";
+		    	info += "<div>Country: " + "{{ developer.get_country }}" + "</div>";
+		    	info += "<div>Member since: " + "{{ developer.sign_up_date|date:"F j, Y" }}" + "</div>";
+		    	info += "<a href='{% url users_profile developer.alias %}'>view profile</a>";
+		    	map.openInfoWindowHtml(point, info);
+      			});
+		var nearIcon = new GIcon(G_DEFAULT_ICON);
+		nearIcon.image = "/static/images/layout/marker-near.png";
+		
+		{% for developer in near_me %}
+		    {% if developer.location %}
+		    var point = new GLatLng({{ developer.location.lat }}, {{ developer.location.lon }});
+			var marker = new GMarker(point, {icon: nearIcon});
+		    
+		    map.addOverlay(marker);
+		    
+		    GEvent.addListener(marker, 'click', function(point) {
+		    	var info = "<span style='font-size: 22px; font-weight: bold'><img src='/static/images/flags/{{ developer.country|lower }}.png'> &nbsp; {{ developer.getname }}</span>"
+		    	info += "<div>Location: " + "{{ developer.location_description }}" + "</div>";
+		    	info += "<div>Country: " + "{{ developer.get_country }}" + "</div>";
+		    	info += "<div>Member since: " + "{{ developer.sign_up_date|date:"F j, Y" }}" + "</div>";
+		    	info += "<a href='{% url users_profile developer.alias %}'>view profile</a>";
+		    	map.openInfoWindowHtml(point, info);
+      			});
+		    
+	        {% endif %}
+	    {% endfor %}
+       	
+		
+		//map.setUIToDefault();		        
+      }
+    });
+</script>
+{% endblock %}

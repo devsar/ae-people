@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block main_content %}
+
+<div class="container_12">
+	<h3>{% trans "Change avatar" %}</h3>
+
+	<div id="avatar_change_container" style="width: 603px; margin: 0 auto;">
+    <span id="avatar_change"></span>
+    </div>
+	
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/swfobject/2.2/swfobject.js"></script>
+	<script type="text/javascript">
+	var flashvars = {
+		postUrl: '{% url users_avatar_change %}',
+		successUrl: '{% url users_profile user.developer.alias %}',
+		fieldName: 'avatar',
+		browseLabel: '{% trans "Browse" %}',
+		uploadLabel: '{% trans "Upload" %}'
+	};
+	var params = {};
+	var attributes = {};
+	params.allowscriptaccess = "always"; 
+	swfobject.embedSWF("/static/swf/imagecropper.swf", "avatar_change", "600", "600", "10.0.0","expressInstall.swf", flashvars, params, attributes);
+	</script>
+</div>
+
+{% endblock %}

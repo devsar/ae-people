@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+    <h1>Upload Photo</h1>
+    
+    {% if upload_error %}
+    <div class="error">{{ upload_error }}</div>
+    {% endif %}
+    <form action="{{ upload_url }}" method="post" enctype="multipart/form-data">
+    <ul>
+        {{ form.as_ul }}
+        <li><input type="file" name="photo"/></li>
+        <li><input type="submit"/></li>
+    </ul>
+    </form>
+{% endblock %}

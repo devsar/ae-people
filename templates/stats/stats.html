@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block head_title %}Stats{% endblock %}
+{% block head_description %}App Engine Developers Stats{% endblock %}
+
+{% block main_content %}
+<div class="container_12">  
+    <div class="grid_12">
+    <div class="title1">{% trans "Total Developers per Country" %}</div>
+    <div id="countries_map"></div>
+    <script type='text/javascript' src='http://www.google.com/jsapi?key=ABQIAAAAJ_rRwS0IgchMFWzYZa4tgBRZY1e2K3EIewCvhQBeofC1NPQ_WBSUPtdiO2WpQ00mpxl1RTxuyAISlQ"'></script>
+    <script type='text/javascript'>
+    google.load('visualization', '1', {'packages': ['geomap']});
+    google.setOnLoadCallback(drawMap);
+
+     function drawMap() {
+        var data = new google.visualization.DataTable();
+        data.addRows({{ countries|length }});
+        data.addColumn('string', 'Country');
+        data.addColumn('number', 'Developers');
+        data.addColumn('string', 'Hover');
+        {% for country in countries %}data.setValue({{ forloop.counter0 }}, 0, '{{ country.code }}'); data.setValue({{ forloop.counter0 }}, 1, {{ country.total }}); data.setValue({{ forloop.counter0 }}, 2, '{{ country.name }}');{% endfor %}
+        
+        var options = {
+            'width': 935,
+        };
+        options['dataMode'] = 'regions';
+        
+        var container = document.getElementById('countries_map');
+        var geomap = new google.visualization.GeoMap(container);
+        geomap.draw(data, options);
+    };
+    </script>
+    </div>
+    <div class="clear" style="margin-bottom: 20px;"></div>
+    
+    <div class="grid_4">
+        <div class="title1">{% trans "Developer Stats"%}</div>
+        
+        <div id='table_div'></div>
+    <script type='text/javascript'>
+      google.load('visualization', '1', {packages:['table']});
+      google.setOnLoadCallback(drawTable);
+      function drawTable() {
+        var data = new google.visualization.DataTable();
+        
+        data.addColumn('string', 'Developers');
+        data.addColumn('number', '#');
+
+        data.addRows(3);
+        
+        data.setCell(0, 0, 'Total');
+        data.setCell(0, 1, {{ stats.total }});
+
+
+        data.setCell(1, 0, 'Python');
+        data.setCell(1, 1, {{ stats.python }});
+
+        data.setCell(2, 0, 'Java');
+        data.setCell(2, 1, {{ stats.java }});
+        
+        var table = new google.visualization.Table(document.getElementById('table_div'));
+        table.draw(data, {showRowNumber: false});
+      }
+    </script>
+        
+        
+    </div>
+    <div class="grid_4">
+    <div class="title1">{% trans "Top 20 Countries"%}</div>
+    
+    {% comment %}
+    <ul>
+    {% for country in countries|slice:":20" %}
+        <dt><a href="{% url country_developers country.code %}" title="AppEngine developers on {{ country.name }}">{{ country.name }}</a> ({{ country.total }} developers) </dt>
+    {% endfor %}
+    </ul>
+    {% endcomment %}
+    
+    <div id='countries_table_div'></div>
+    <script type='text/javascript'>
+      google.load('visualization', '1', {packages:['table']});
+      google.setOnLoadCallback(drawTable);
+      function drawTable() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Country');
+        data.addColumn('number', 'Developers');
+        data.addColumn('number', '%');
+
+        {% with countries|slice:":20" as countries %}
+        data.addRows({{ countries|length }});
+        {% for country in countries %}
+        data.setCell({{ forloop.counter0 }}, 0, '{{ country.name }}');
+        data.setCell({{ forloop.counter0 }}, 1, {{ country.total }});
+        data.setCell({{ forloop.counter0 }}, 2, {{ country.total }}, '{% widthratio country.total stats.total 100 %}%');
+        {% endfor %}
+        {% endwith %}
+        
+        var table = new google.visualization.Table(document.getElementById('countries_table_div'));
+        table.draw(data, {showRowNumber: false});
+      }
+    </script>
+    </div>
+    <div class="grid_4">
+    <div class="title1">{% trans "Top 20 Tags"%}</div>
+    <div id='tags_table_div'></div>
+    
+    <script type='text/javascript'>
+      google.load('visualization', '1', {packages:['table']});
+      google.setOnLoadCallback(drawTable);
+      function drawTable() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Tag');
+        data.addColumn('number', 'Developers');
+        data.addColumn('number', '%');
+
+        data.addRows({{ tags|length }});
+        {% for tag in tags %}
+        data.setCell({{ forloop.counter0 }}, 0, '{{ tag.name }}');
+        data.setCell({{ forloop.counter0 }}, 1, {{ tag.total }});
+        data.setCell({{ forloop.counter0 }}, 2, {{ tag.popularity }}, '{% widthratio tag.popularity 1 100 %}%');
+        {% endfor %}
+        
+        var table = new google.visualization.Table(document.getElementById('tags_table_div'));
+        table.draw(data, {showRowNumber: false});
+      }
+    </script>
+    </div>
+    
+    <div class="clear" style="margin-bottom: 20px;"></div>
+</div>
+{% endblock %}

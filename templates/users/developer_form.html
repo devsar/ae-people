@@ -1,0 +1,33 @@
+{% load uni_form_tags %}
+
+{% with form.helper as helper %}
+    {% uni_form form helper %}
+{% endwith %}
+
+<script type="text/javascript">
+$(document).ready(function(){
+var geocoder = null;
+
+if (GBrowserIsCompatible()) {
+	geocoder = new GClientGeocoder();
+}
+GEvent.addListener(location_marker, "dragstart", function() {
+	location_map.closeInfoWindow();
+});
+$('#id_location_description').keyup(function(){
+	var address = $("#id_location_description").attr("value");
+	if (geocoder && address.length > 3) {
+		 geocoder.getLatLng(
+			  address,
+		      function(point) {
+		        if (point) {
+		          location_map.setCenter(point, 13);
+		          location_marker.setLatLng(point);
+		          $('#location_id')[0].value = point.lat() + "," + point.lng();
+		        }
+		      }
+		    );
+	}
+});
+});
+</script>

@@ -1,0 +1,10 @@
+cron:
+
+- description: update countries
+  url: /country/update/
+  schedule: every 24 hours
+
+- description: update stats
+  url: /stats/update/
+  schedule: every 24 hours
+

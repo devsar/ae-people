@@ -1,0 +1,9 @@
+{% if developer.email_contact or developer.phone or developer.personal_page or developer.personal_blog %}
+<div id="contact_info" style="margin-bottom:20px;">
+	<h2>Contact Info</h2>
+	{% if email_contact %}<div>Email Contact: {{ email_contact|safe }}</div> {% endif %}
+	{% if developer.phone %} <div>Phone: {{ developer.phone }}</div> {% endif %}
+	{% if developer.personal_page %}<div itemprop="url">Web:  <a href="{{ developer.personal_page }}">{{ developer.personal_page }}</a></div>{% endif %}
+	{% if developer.personal_blog %}<div itemprop="url">Blog:  <a href="{{ developer.personal_blog }}"> {{ developer.personal_blog }}</a></div>{% endif %}
+</div>
+{% endif %}

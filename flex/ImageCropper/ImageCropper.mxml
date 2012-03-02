@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:c="com.flexblocks.imagecropper.*" xmlns:net="flash.net.*"
+                creationComplete="initApp()" 
+                layout="absolute" width="600" height="400" horizontalScrollPolicy="off" verticalScrollPolicy="off"
+                backgroundColor="white">
+
+	<mx:Style>	
+		Label {
+			color: #BBBBBB;
+		}
+		
+		CheckBox {
+			color: #BBBBBB;
+			textRollOverColor: #BBBBBB;
+			textSelectedColor: #BBBBBB;
+		}						
+	</mx:Style>
+	
+	<mx:Script>
+		<![CDATA[
+            import mx.controls.Alert;
+            import mx.utils.ObjectUtil;
+            import mx.graphics.codec.JPEGEncoder;
+
+        	import flash.display.Bitmap;
+        	import flash.display.Loader;
+			import flash.display.PixelSnapping;
+			import flash.display.Sprite;
+            import flash.events.*;
+            import flash.net.*;
+            import flash.net.FileReference;
+
+            import Classes.UploadPostHelper;
+
+            private var fileReference:FileReference  = new FileReference();
+            private var img_data:BitmapData;
+            private var img_cropped_data:BitmapData;
+
+    		private static const MAX_WIDTH	: Number = 600;
+		    private static const MAX_HEIGHT	: Number = 600;
+
+    		private static const PREVIEW_WIDTH	: Number = 280;
+		    private static const PREVIEW_HEIGHT	: Number = 280;
+
+			private var resizedBitmapData:BitmapData = new BitmapData(MAX_WIDTH, MAX_HEIGHT, false, 0x000000);
+
+            [Bindable]
+            public var postUrl:String;
+
+            [Bindable]
+            public var successUrl:String;
+
+            [Bindable]
+            public var fieldName:String;
+
+            [Bindable]
+            public var browseLabel:String = 'Browse and preview...';
+
+            [Bindable]
+            public var uploadLabel:String = 'Upload';
+
+            // -----
+            // IMAGE CROPPER VARS 
+            // -----
+
+			// Index of last image selected using the selectImage ComboBox
+			
+			private var lastSelectedImage:uint = 0;
+			
+			// Current values for the cropping rectangle, handle size, and aspect ratio constraint settings
+			
+			private var currentCropbox:Rectangle = new Rectangle(0, 0, MAX_WIDTH, MAX_HEIGHT);
+			private var currentHandleSize:uint = 10;
+			private var currentCropConstraint:Boolean = true
+			
+            // -----
+            // SS methods
+            // -----
+
+
+            private function initApp():void {
+                postUrl = Application.application.parameters.postUrl;
+                successUrl = Application.application.parameters.successUrl;
+                fieldName = Application.application.parameters.fieldName;
+                if (Application.application.parameters.browseLabel) {
+                  browseLabel = Application.application.parameters.browseLabel;
+                }
+                if (Application.application.parameters.uploadLabel) {
+                  uploadLabel = Application.application.parameters.uploadLabel;
+                }
+                fileReference = new FileReference();
+                fileReference.addEventListener(Event.SELECT, fileReference_select);
+                fileReference.addEventListener(Event.COMPLETE, fileReference_complete);
+            }
+
+            private function btn_click(evt:MouseEvent):void {
+                var arr:Array = [];
+                arr.push(new FileFilter("Images", ".gif;*.jpeg;*.jpg;*.png"));
+                fileReference.browse(arr);
+            }
+
+            private function fileReference_select(event:Event):void {
+                fileReference.load();
+            }
+
+            private function fileReference_complete(event:Event):void {
+	    		var loader:Loader = new Loader();
+	    		loader.contentLoaderInfo.addEventListener(Event.COMPLETE, getBitmapData);
+	    		loader.loadBytes(fileReference.data);	
+    		}
+ 
+       		private function getBitmapData(event:Event):void  {
+                try
+                {
+                    img_data =  Bitmap(event.target.content).bitmapData;
+                }
+                catch (error:Error)
+                {
+                    Alert.show(error.message);
+                    throw error;
+                }
+
+    			doImageSelect();
+                enableControls(true, true);
+    		}
+
+
+			// --------------------------------------------------------------------------------------------------
+			// doImageSelect - Called when an image is selected using the selectImage ComboBox
+			// --------------------------------------------------------------------------------------------------
+
+			private function doImageSelect():void {
+                btn_upload.enabled = true;
+
+				// Remove the previously cropped image
+				croppedImage.source = null;
+				croppedImage.width = 0;
+				croppedImage.height = 0;
+				
+				
+				// Restore the cropping rectangle, handle size and constraint option for the image just selected
+											
+				currentCropbox = imageCropper.getCropRect(true);
+				currentHandleSize = imageCropper.handleSize;
+				currentCropConstraint = true;
+				
+				// Tell the ImageCropper component to begin loading the selected image
+                var loader:Loader = new Loader();
+                
+				imageCropper.sourceImage = img_data;
+
+				// Disable all controls while the image is loading. This is done after the sourceImage is assigned
+				// to the ImageCropper because when the ImageCropper is disabled a sourceImage cannot be assigned.
+				enableControls(false, true);
+
+			}
+
+			// --------------------------------------------------------------------------------------------------
+			// imageReady - Called when the ImageCropper component has loaded and initialized an image
+			// --------------------------------------------------------------------------------------------------
+			
+			private function imageReady():void {
+				// Enable the controls (including the imageCropper). Note that the imageCropper must be enabled before changing property values or calling setCropRect().
+				enableControls(true, true);
+							
+				// Restore the handle size that was previously saved for this image
+				
+				imageCropper.handleSize = currentHandleSize;
+				//handleSize.value = currentHandleSize;
+				
+				// Restore "Constrain Crop Rectangle to Aspect Ratio" to the setting that was previously saved for the image
+				
+				imageCropper.constrainToAspectRatio = currentCropConstraint;
+				//constrainToAspectRatio.selected = currentCropConstraint;
+
+				// If this image was not previously selected then set the cropping rectangle to include the entire image. Otherwise,
+				// restore the cropping rectangle to its previous value. Note that the cropping rectangle is relative to the component
+				// and not to the image because the componentRelative parameter in the call the to setCropRect is set to true.
+				
+				if (!currentCropbox) imageCropper.setCropRect(300, 300, -1, -1);
+				else imageCropper.setCropRect(currentCropbox.width, currentCropbox.height, currentCropbox.x, currentCropbox.y, true);
+				
+				// Get the cropped image 
+				doCrop();
+			}
+			
+			// --------------------------------------------------------------------------------------------------
+			// doCrop - Get the cropped image from the ImageCropper component
+			// --------------------------------------------------------------------------------------------------
+
+			private function doCrop():void {
+				
+				// Get the cropped BitmapData
+				
+				var newImage:BitmapData = imageCropper.croppedBitmapData;
+				var originalBitmap:Bitmap = new Bitmap(newImage.clone());
+
+                //Copy the bitmap for upload
+                img_cropped_data = newImage.clone();
+
+                var originalWidth:Number = newImage.width;
+             	var originalHeight:Number = newImage.height;
+             	var newWidth:Number = originalWidth;
+             	var newHeight:Number = originalHeight;
+             	
+             	var sx:Number = 1;
+             	var sy:Number = 1;
+                
+             	if (originalWidth > PREVIEW_WIDTH || originalHeight > PREVIEW_HEIGHT) {
+              		sx =  PREVIEW_WIDTH / originalWidth;
+              		sy = PREVIEW_HEIGHT / originalHeight;
+              		var scale:Number = Math.min(sx, sy);
+              		newWidth = originalWidth * scale;
+              		newHeight = originalHeight * scale;	
+              	}
+
+				// Set the width and height of the croppedImage Image based on the dimensions of the cropped image
+				//Scale our bitmap
+				originalBitmap.smoothing = true;
+				originalBitmap.pixelSnapping = PixelSnapping.ALWAYS;
+				originalBitmap.width = newWidth;
+				originalBitmap.height = newHeight;
+				
+				//Draw this resized bitmap into a bitmapdata. Container nesting is necessary to correctly draw
+				//scaled pixels. After we draw we return the sprite to the screen for viewing.
+				var cont:Sprite = new Sprite();
+				cont.addChild(originalBitmap);
+				newImage.draw(cont);
+
+                croppedImage.width = newWidth;
+				croppedImage.height = newHeight;
+
+				// Create a new Bitmap from the BitmapData and assign it to the croppedImage Image
+				
+				croppedImage.source = new Bitmap(newImage);
+				
+				// Display the cropping rectangle in relative to the ImageCropper component and relative to the image
+				
+				//imageCropperRect.text = imageCropper.getCropRect(true, true).toString();
+				//sourceImageRect.text = imageCropper.getCropRect(false, true).toString();
+			}
+			
+			// --------------------------------------------------------------------------------------------------
+			// enableControls - Enables or disables the controls
+			// --------------------------------------------------------------------------------------------------
+			
+			private function enableControls(enable:Boolean, includeEnabled:Boolean = false):void {
+				
+				// The checkbox to enable/disable the ImageCropper component is only affected if includeEnabled is set to true
+				
+				//if (includeEnabled) enableComponent.enabled = enable;
+				
+				// Set the enabled state for all other controls
+				
+				imageCropper.enabled = enable;
+				//outlineColor.enabled = enable;
+				//outlineAlpha.enabled = enable;
+				//handleColor.enabled = enable;
+				//handleAlpha.enabled = enable;
+				//maskColor.enabled = enable;
+				//maskAlpha.enabled = enable;
+				//backgroundColor.enabled = enable;
+				//backgroundAlpha.enabled = enable;
+				//handleSize.enabled = enable;
+				//constrainToAspectRatio.enabled = enable;
+			}
+
+
+            private function resizeBitmap(bmd:BitmapData): BitmapData
+		    {
+                var originalBitmap:Bitmap = new Bitmap(bmd.clone());
+
+             	var originalWidth:Number = bmd.width;
+             	var originalHeight:Number = bmd.height;
+             	var newWidth:Number = originalWidth;
+             	var newHeight:Number = originalHeight;
+             	
+             	var sx:Number = 1;
+             	var sy:Number = 1;
+                
+             	if (originalWidth > MAX_WIDTH || originalHeight > MAX_HEIGHT) {
+              		sx =  MAX_WIDTH / originalWidth;
+              		sy = MAX_HEIGHT / originalHeight;
+              		var scale:Number = Math.min(sx, sy);
+              		newWidth = originalWidth * scale;
+              		newHeight = originalHeight * scale;	
+              	} else {
+                    return bmd;
+                }
+             	
+                //Scale our bitmap
+				originalBitmap.smoothing = true;
+				originalBitmap.pixelSnapping = PixelSnapping.ALWAYS;
+				originalBitmap.width = newWidth;
+				originalBitmap.height = newHeight;
+				
+				//Draw this resized bitmap into a bitmapdata. Container nesting is necessary to correctly draw
+				//scaled pixels. After we draw we return the sprite to the screen for viewing.
+				var cont:Sprite = new Sprite();
+				cont.addChild(originalBitmap);
+
+                resizedBitmapData = new BitmapData(newWidth, newHeight, false, 0x000000);
+				resizedBitmapData.draw(cont);
+
+                return resizedBitmapData;
+		    }
+
+            public function upload(evt:Event):void
+            {
+                var loader:URLLoader = new URLLoader();
+                var request:URLRequest;
+                var imgByteArray:ByteArray;
+
+                configureListeners(loader);
+
+               	request = new URLRequest(postUrl);
+                request.method = URLRequestMethod.POST;
+
+                var data:BitmapData = resizeBitmap(img_cropped_data);
+
+				var jpgenc:JPEGEncoder = new JPEGEncoder(90);
+				imgByteArray = jpgenc.encode(data);
+
+				request.method = URLRequestMethod.POST;
+                request.url = postUrl;
+                request.contentType = 'multipart/form-data; boundary=' + UploadPostHelper.getBoundary();
+
+                //load data
+                request.data = UploadPostHelper.getPostData(fileReference.name, imgByteArray, fieldName);
+				
+			    loader.dataFormat = URLLoaderDataFormat.BINARY;
+
+			    //loader.addEventListener(ProgressEvent.PROGRESS, eventFileUploadProgress);
+			    loader.addEventListener(Event.COMPLETE, eventFileUploadComplete);
+			    loader.addEventListener(IOErrorEvent.IO_ERROR, eventFileUploadError);
+			    loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, eventFileUploadError);
+
+                try {
+                    loader.load(request);
+                } catch (error:Error) {
+                    Alert.show("Error uploading!");
+                    trace("Unable to load requested document.");
+                }
+
+            }
+
+            private function eventFileUploadError(e:*): void {
+                Alert.show("Error: uploading");
+		    }
+
+		    private function eventFileUploadComplete(e:Event): void {
+                var u:URLRequest = new URLRequest(successUrl);
+                navigateToURL(u,"_self")
+		    }
+
+
+            private function configureListeners(dispatcher:IEventDispatcher):void {
+                dispatcher.addEventListener(Event.COMPLETE, completeHandler);
+                dispatcher.addEventListener(Event.OPEN, openHandler);
+                dispatcher.addEventListener(ProgressEvent.PROGRESS, progressHandler);
+                dispatcher.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+                dispatcher.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+                dispatcher.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+            }
+
+            private function completeHandler(event:Event):void {
+                var loader:URLLoader = URLLoader(event.target);
+                trace("completeHandler: " + loader.data);
+            }
+
+            private function openHandler(event:Event):void {
+                trace("openHandler: " + event);
+            }
+
+            private function progressHandler(event:ProgressEvent):void {
+                trace("progressHandler loaded:" + event.bytesLoaded + " total: " + event.bytesTotal);
+            }
+
+            private function securityErrorHandler(event:SecurityErrorEvent):void {
+                trace("securityErrorHandler: " + event);
+            }
+
+            private function httpStatusHandler(event:HTTPStatusEvent):void {
+                trace("httpStatusHandler: " + event);
+            }
+
+            private function ioErrorHandler(event:IOErrorEvent):void {
+                trace("ioErrorHandler: " + event);
+            }
+
+		]]>
+	</mx:Script>
+	
+	<mx:Label x="14" y="11" text="Original" fontWeight="bold" color="#333" /> 
+	<c:ImageCropper id="imageCropper" y="37" left="15" width="280" height="280" enabled="true" handleColor="#FF00FF" maskColor="#660066" maskAlpha="0.6"
+		            sourceImageReady="imageReady()"  sourceImageLoadError="trace('Error while loading image')" cropRectChanged="doCrop()" cropConstraintChanged="trace('Crop constraint changed'); doCrop()" cropDimensionsChanged="trace('Crop dimensions changed'); doCrop()" cropPositionChanged="trace('Crop position changed'); doCrop()" />
+
+	<mx:Label x="314" y="11" text="Preview" fontWeight="bold" color="#333" />
+	<mx:Canvas right="15" y="37"  width="280" height="280" backgroundColor="#000000">
+		<mx:Image id="croppedImage" scaleContent="false" />
+	</mx:Canvas>	
+
+    <!--
+	<mx:CheckBox id="enableComponent" x="15" y="338" enabled="false" label="Enable the ImageCropper Component" selected="true" change="enableControls(enableComponent.selected)" />
+	<mx:Label x="314" y="340" text="Outline" />
+	<mx:ColorPicker id="outlineColor" x="391" y="337" enabled="false" selectedColor="#FFFFFF" change="imageCropper.outlineColor = outlineColor.selectedColor" />
+	<mx:HSlider id="outlineAlpha" x="422" y="340" width="171" enabled="false" allowTrackClick="true" minimum="0" maximum="1" snapInterval=".05" value="1" liveDragging="true" change="imageCropper.outlineAlpha = outlineAlpha.value" />
+
+	<mx:Label x="314" y="370" text="Handles" />
+	<mx:ColorPicker id="handleColor" x="391" y="369" enabled="false" selectedColor="#FF00FF" change="imageCropper.handleColor = handleColor.selectedColor" />
+	<mx:HSlider id="handleAlpha" x="422" y="371" width="171" enabled="false" allowTrackClick="true" minimum="0" maximum="1" snapInterval=".05" value=".5" liveDragging="true" change="imageCropper.handleAlpha = handleAlpha.value" />
+
+	<mx:Label x="314" y="404" text="Mask" />
+	<mx:ColorPicker id="maskColor" x="391" y="401" enabled="false" selectedColor="#660066" change="imageCropper.maskColor = maskColor.selectedColor" />
+	<mx:HSlider id="maskAlpha" x="422" y="404" width="171" enabled="false" allowTrackClick="true" minimum="0" maximum="1" value=".6" snapInterval=".05" liveDragging="true" change="imageCropper.maskAlpha = maskAlpha.value" />	
+
+	<mx:Label x="314" y="435" text="Background" />
+	<mx:ColorPicker id="backgroundColor" x="391" y="432" enabled="false" selectedColor="#000000" change="imageCropper.backgroundColor = backgroundColor.selectedColor" />
+	<mx:HSlider id="backgroundAlpha" x="422" y="435" width="171" enabled="false" minimum="0" maximum="1" liveDragging="true" value="1" snapInterval=".05" allowTrackClick="true" change="imageCropper.backgroundAlpha = backgroundAlpha.value" />
+	
+	<mx:Label x="13" y="435" text="Handle Size:" />
+	<mx:HSlider id="handleSize" x="92" y="435" width="177" enabled="false" allowTrackClick="true" minimum="3" maximum="20" value="10" snapInterval="1" liveDragging="true" change="imageCropper.handleSize = handleSize.value" /> 
+	
+	<mx:CheckBox id="constrainToAspectRatio" x="15" y="402" enabled="false" label="Constrain Crop Rectangle to Aspect Ratio" selected="false" change="imageCropper.constrainToAspectRatio = constrainToAspectRatio.selected" />
+	<mx:Label x="13" y="466" text="ImageCropper Rect:" />
+	<mx:Label  id="imageCropperRect" x="133" y="466" />
+
+	<mx:Label x="314" y="466" text="Crop Rect:" />
+	<mx:Label id="sourceImageRect" x="389" y="466" />
+    -->
+
+    <mx:ControlBar x="20" y="350">
+    <mx:Button  id="btn_browse" label="{browseLabel}" click="btn_click(event);"/>
+    <mx:Button  id="btn_upload" label="{uploadLabel}" click="upload(event)" enabled="false" />
+    </mx:ControlBar>
+
+</mx:Application>

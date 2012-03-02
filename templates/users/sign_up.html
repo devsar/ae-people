@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block main_content %}
+<div class="container_12">
+	<div class="grid_12">
+        <div id="signup_breadcrumb">
+        <span {% ifequal step  1 %}class="current"{% endifequal %}>1. {% trans "Basic Info" %}</span>
+        <span {% ifequal step  2 %}class="current"{% endifequal %}>2. {% trans "Public Profile Info" %}</span>
+        <span {% ifequal step  3 %}class="current"{% endifequal %}>3. {% trans "Location" %}</span>
+        </div>
+		{% block step_form %}
+        
+        {% endblock %}
+	</div>
+    <style>
+    #signup_breadcrumb .current {
+        font-weight: bold;
+        background-color: #D2E0F7;
+        border-bottom-left-radius: 4px 4px;
+        border-bottom-right-radius: 4px 4px;
+        border-top-left-radius: 4px 4px;
+        border-top-right-radius: 4px 4px;
+        clear: both;
+        color: #2C4F66;
+        padding-bottom: 2px;
+        padding-left: 6px;
+        padding-right: 6px;
+        padding-top: 2px;
+        text-align: center;
+        text-shadow: white 1px 1px 1px;
+    }
+    .uniForm fieldset {
+        width: 48%;
+        margin-left: 5px;
+        float: left;
+    }
+    .uniForm fieldset.developer_location {
+        width: 98%;
+        margin-left: 5px;
+        margin-bottom: 5px;
+        float: left;
+    }
+    #div_id_1-sdks ul {
+        list-style: none;
+    }
+    .uniForm ul {
+        list-style: none;
+        width: 53%;
+        float: left;
+    }
+    </style>
+</div>
+{% endblock %}

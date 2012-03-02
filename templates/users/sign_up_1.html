@@ -1,0 +1,24 @@
+{% extends "users/sign_up.html" %}
+
+{% load i18n uni_form_tags %}
+
+{% block step_form %}
+<div class="container_12">
+	<div class="grid_12">
+    
+    <form name="form" method="post" action="." class="uniForm">
+    
+    {{ form|as_uni_form }}
+	
+	<input type="hidden" name="{{ step_field }}" value="{{ step0 }}" />
+	{{ previous_fields|safe }}
+	<div class="buttonHolder">
+		<br/>
+		<button type="submit" class="button_next">{% trans "Next" %}</button>
+       	<input type="hidden" name="next" value="{{ next|escape }}" />
+    </div>
+	
+</form>
+</div>
+</div> 
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "users/sign_up.html" %}
+
+{% load i18n uni_form_tags %}
+
+{% block step_form %}
+<div class="container_12">
+	<div class="grid_12">
+    
+    <form name="form" method="post" action="." class="uniForm">
+    
+    {{ form|as_uni_form }}
+	
+	<input type="hidden" name="{{ step_field }}" value="{{ step0 }}" />
+	{{ previous_fields|safe }}
+	<div class="buttonHolder">
+		<br/>
+		<button type="submit" class="button_next">{% trans "Sign Up" %}</button>
+       	<input type="hidden" name="next" value="{{ next|escape }}" />
+    </div>
+	
+</form>
+</div>
+</div> 
+
+<script type="text/javascript">
+$(document).ready(function(){
+var geocoder = null;
+
+if (GBrowserIsCompatible()) {
+    geocoder = new GClientGeocoder();
+}
+GEvent.addListener(marker_2location, "dragstart", function() {
+    map_2location.closeInfoWindow();
+});
+$('#id_location_description').keyup(function(){
+    var address = $("#id_2-location_description").attr("value");
+    if (geocoder && address.length > 3) {
+         geocoder.getLatLng(
+              address,
+              function(point) {
+                if (point) {
+                  map.setCenter(point, 13);
+                  marker.setLatLng(point);
+                  $('#2-location_id')[0].value = point.lat() + "," + point.lng();
+                }
+              }
+            );
+    }
+});
+});
+</script>
+{% endblock %}
