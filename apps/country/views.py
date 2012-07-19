@@ -1,6 +1,9 @@
 """
     Country views
 """
+import logging
+import os
+
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse, Http404
 from django.shortcuts import render_to_response
@@ -11,28 +14,20 @@ from google.appengine.api.labs import taskqueue
 from country.models import Country, COUNTRIES_CODE
 from users.models import Developer
 
-def chunks(l, n):
-    """ 
-    Yield successive n-sized chunks from l.
-    """
-    for i in xrange(0, len(l), n):
-        yield l[i:i+n]
-
-def update_country(request, country_code=None):
+def update_country(request, run=None):
     """
     Update country if given or all if not
     """
-    if country_code:
-        Country.update(country_code)
+    logging.info("%s" % os.environ.keys())
+    if "run" in request.POST:
+        for country_code in COUNTRIES_CODE:
+            logging.info("processing: %s" % country_code)
+            Country.update(country_code)
         return HttpResponse("")
-    
-    #queue update for all countries  
-    queue = taskqueue.Queue()
-    tasks = [taskqueue.Task(url=reverse("country_update_country", kwargs={'country_code': str(country)})) 
-             for country in COUNTRIES_CODE]
-    
-    for chunk in chunks(tasks, 100):
-        queue.add(chunk)
+    else:
+        #put in a taskqueue to 
+        taskqueue.add(url=reverse("country_update_country"), params={'run': "1"})
+
     return HttpResponse("")
 
 
